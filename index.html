@@ -1,0 +1,289 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPU Tic-Tac-Toe Competition</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f3f6fb;
+    color: #243247;
+    text-align: center;
+    padding: 25px;
+}
+
+h1 {
+    color: #183153;
+}
+
+.players {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.player {
+    background: white;
+    padding: 18px;
+    border-radius: 12px;
+    width: 260px;
+}
+
+.x {
+    color: #2167b5;
+}
+
+.o {
+    color: #bd4545;
+}
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(3, 100px);
+    gap: 10px;
+    justify-content: center;
+    margin: 25px;
+}
+
+.cell {
+    height: 100px;
+    background: white;
+    border: 2px solid #d6dfeb;
+    border-radius: 10px;
+    font-size: 42px;
+    font-weight: bold;
+    cursor: default;
+}
+
+button.action {
+    background: #245fa5;
+    color: white;
+    border: none;
+    padding: 12px 18px;
+    margin: 5px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.secondary {
+    background: #64748b !important;
+}
+
+.status {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 20px;
+}
+
+.log {
+    background: white;
+    padding: 15px;
+    margin: 20px auto;
+    max-width: 500px;
+    border-radius: 12px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>GPU Tic-Tac-Toe Competition</h1>
+<p>Two Competing Decision-Making Players</p>
+
+<div class="players">
+    <div class="player">
+        <h3 class="x">GPU Competitor 1 — X</h3>
+        <p>Strategy: First available square</p>
+    </div>
+
+    <div class="player">
+        <h3 class="o">GPU Competitor 2 — O</h3>
+        <p>Strategy: Centre, corners and edges</p>
+    </div>
+</div>
+
+<div class="status" id="status">
+    Press Run Game to start.
+</div>
+
+<div class="board" id="board"></div>
+
+<button class="action" onclick="runAuto()">Run Game</button>
+<button class="action secondary" onclick="nextMove()">Next Move</button>
+<button class="action secondary" onclick="resetGame()">Reset</button>
+
+<div class="log">
+    <h3>Move History</h3>
+    <p id="moves">No moves yet.</p>
+</div>
+
+<script>
+
+let board = Array(9).fill(0);
+let turn = 0;
+let finished = false;
+let timer = null;
+
+const preferenceO = [4,0,2,6,8,1,3,5,7];
+
+const winningLines = [
+    [0,1,2],
+    [3,4,5],
+    [6,7,8],
+    [0,3,6],
+    [1,4,7],
+    [2,5,8],
+    [0,4,8],
+    [2,4,6]
+];
+
+const boardElement = document.getElementById("board");
+
+function createBoard() {
+    boardElement.innerHTML = "";
+
+    for (let i = 0; i < 9; i++) {
+        let cell = document.createElement("button");
+        cell.className = "cell";
+        cell.disabled = true;
+        boardElement.appendChild(cell);
+    }
+}
+
+function render() {
+    const cells = boardElement.children;
+
+    board.forEach((value, index) => {
+        cells[index].textContent =
+            value === 1 ? "X" : value === 2 ? "O" : "";
+
+        cells[index].className =
+            "cell" + (value === 1 ? " x" : value === 2 ? " o" : "");
+    });
+}
+
+function winner() {
+    for (const line of winningLines) {
+        const [a,b,c] = line;
+
+        if (board[a] &&
+            board[a] === board[b] &&
+            board[b] === board[c]) {
+            return board[a];
+        }
+    }
+
+    return 0;
+}
+
+function oneMove() {
+    if (finished) return;
+
+    const player = turn % 2 === 0 ? 1 : 2;
+    let move = -1;
+
+    if (player === 1) {
+        move = board.findIndex(value => value === 0);
+    } else {
+        move = preferenceO.find(index => board[index] === 0);
+    }
+
+    if (move === undefined || move < 0) {
+        finished = true;
+        document.getElementById("status").textContent = "Game Draw!";
+        stopAuto();
+        return;
+    }
+
+    board[move] = player;
+    turn++;
+
+    render();
+
+    const who = player === 1 ? "GPU 1 (X)" : "GPU 2 (O)";
+
+    const moves = document.getElementById("moves");
+
+    moves.textContent =
+        (moves.textContent === "No moves yet." ? "" :
+        moves.textContent + " | ") +
+        who + " selected square " + (move + 1);
+
+    const w = winner();
+
+    if (w) {
+        finished = true;
+        document.getElementById("status").textContent =
+            (w === 1 ? "GPU 1 (X)" : "GPU 2 (O)") + " wins!";
+        stopAuto();
+    } else if (turn === 9) {
+        finished = true;
+        document.getElementById("status").textContent = "Game Draw!";
+        stopAuto();
+    } else {
+        document.getElementById("status").textContent =
+            (turn % 2 === 0 ? "GPU 1 (X)" : "GPU 2 (O)") +
+            " is ready to move.";
+    }
+}
+
+function nextMove() {
+    stopAuto();
+    oneMove();
+}
+
+function stopAuto() {
+    if (timer) {
+        clearInterval(timer);
+        timer = null;
+    }
+}
+
+function runAuto() {
+    if (finished) resetGame();
+
+    if (timer) {
+        stopAuto();
+        return;
+    }
+
+    document.getElementById("status").textContent =
+        "Competition Running...";
+
+    timer = setInterval(() => {
+        oneMove();
+
+        if (finished) stopAuto();
+    }, 700);
+}
+
+function resetGame() {
+    stopAuto();
+
+    board = Array(9).fill(0);
+    turn = 0;
+    finished = false;
+
+    document.getElementById("moves").textContent = "No moves yet.";
+    document.getElementById("status").textContent =
+        "Press Run Game to start.";
+
+    render();
+}
+
+createBoard();
+render();
+
+</script>
+
+</body>
+</html>
